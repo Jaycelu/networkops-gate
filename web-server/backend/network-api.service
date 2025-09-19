@@ -7,7 +7,7 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/all-in-one/web-server/backend
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/gunicorn --workers 4 --bind 127.0.0.1:9528 --timeout 120 wsgi:app
+ExecStart=/usr/bin/gunicorn --workers 4 --bind 0.0.0.0:9528 --timeout 120 wsgi:app
 Restart=always
 RestartSec=10
 

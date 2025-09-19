@@ -74,26 +74,39 @@ class DatabaseManager:
         :return: 用户ID或None
         """
         try:
+            print(f"[DB_MANAGER] Creating user: username={username}, email={email}, phone={phone}")
             conn = self.get_connection()
             cursor = conn.cursor()
             
+            # 先检查是否已存在
+            cursor.execute('SELECT id FROM users WHERE username=? OR email=? OR phone=?', (username, email, phone))
+            existing = cursor.fetchone()
+            if existing:
+                print(f"[DB_MANAGER] User already exists: {existing}")
+                conn.close()
+                return None
+            
             # 插入新用户
+            print(f"[DB_MANAGER] Executing INSERT for user: {username}")
             cursor.execute('''
-                INSERT INTO users (username, email, phone, password_hash)
-                VALUES (?, ?, ?, ?)
-            ''', (username, email, phone, self.hash_password(password)))
+                INSERT INTO users (username, email, phone, password_hash, token_balance)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (username, email, phone, self.hash_password(password), 1000))
             
             user_id = cursor.lastrowid
+            print(f"[DB_MANAGER] Insert result - user_id: {user_id}")
             conn.commit()
             conn.close()
             
+            print(f"[DB_MANAGER] User created successfully with ID: {user_id}")
             return user_id
         except sqlite3.IntegrityError as e:
-            # 处理唯一性约束违反（用户名、邮箱或手机号已存在）
-            print(f"创建用户失败: {e}")
+            print(f"[DB_MANAGER] IntegrityError during user creation: {e}")
             return None
         except Exception as e:
-            print(f"创建用户时发生错误: {e}")
+            print(f"[DB_MANAGER] Exception during user creation: {e}")
+            import traceback
+            print(f"[DB_MANAGER] Traceback: {traceback.format_exc()}")
             return None
     
     def get_user_by_id(self, user_id):

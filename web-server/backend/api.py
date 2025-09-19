@@ -5,6 +5,11 @@ import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
+import logging
+
+# 配置日志
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # 添加数据库模块路径
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'database'))
@@ -21,14 +26,18 @@ def register():
     try:
         # 获取请求数据
         data = request.get_json()
+        logger.info(f"Received registration data: {data}")
         username = data.get('username')
         phone = data.get('phone')
         email = data.get('email')
         password = data.get('password')
         confirm_password = data.get('confirmPassword')
         
+        logger.info(f"Extracted values: username={username}, phone={phone}, email={email}, password={password}, confirm_password={confirm_password}")
+        
         # 验证必填字段
         if not all([username, phone, email, password, confirm_password]):
+            logger.warning("Missing required fields")
             return jsonify({'success': False, 'message': '所有字段都是必填的'}), 400
         
         # 验证密码一致性
@@ -57,7 +66,9 @@ def register():
             return jsonify({'success': False, 'message': '手机号已被注册'}), 400
         
         # 创建用户
+        logger.info(f"Attempting to create user: username={username}, email={email}, phone={phone}")
         user_id = db_manager.create_user(username, email, phone, password)
+        logger.info(f"User creation result: user_id={user_id}")
         if user_id:
             # 注册成功，返回用户信息
             user = db_manager.get_user_by_id(user_id)
@@ -76,8 +87,10 @@ def register():
             return jsonify({'success': False, 'message': '注册失败，请稍后重试'}), 500
     
     except Exception as e:
+        import traceback
         print(f"注册时发生错误: {e}")
-        return jsonify({'success': False, 'message': '服务器内部错误'}), 500
+        print(f"错误详情: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': f'服务器内部错误: {str(e)}'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
