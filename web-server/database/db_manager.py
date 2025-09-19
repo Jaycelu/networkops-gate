@@ -27,36 +27,34 @@ class DatabaseManager:
         """
         初始化数据库（如果不存在则创建）
         """
-        if not os.path.exists(self.db_path):
-            # 确保数据库目录存在
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            
-            # 创建数据库和表
-            conn = self.get_connection()
-            cursor = conn.cursor()
-            
-            # 创建用户表
-            cursor.execute('''
-                CREATE TABLE users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username VARCHAR(50) NOT NULL UNIQUE,
-                    email VARCHAR(100) NOT NULL UNIQUE,
-                    phone VARCHAR(20) NOT NULL UNIQUE,
-                    password_hash VARCHAR(255) NOT NULL,
-                    token_balance INTEGER DEFAULT 1000,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # 创建索引
-            cursor.execute('CREATE INDEX idx_users_username ON users(username)')
-            cursor.execute('CREATE INDEX idx_users_email ON users(email)')
-            cursor.execute('CREATE INDEX idx_users_phone ON users(phone)')
-            cursor.execute('CREATE INDEX idx_users_created_at ON users(created_at)')
-            
-            conn.commit()
-            conn.close()
+        # 确保数据库目录存在
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        
+        # 创建数据库和表（如果表不存在）
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # 创建用户表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username VARCHAR(50) NOT NULL UNIQUE,
+                email VARCHAR(100) NOT NULL UNIQUE,
+                phone VARCHAR(20) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # 创建索引
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)')
+        
+        conn.commit()
+        conn.close()
     
     def hash_password(self, password):
         """
@@ -170,60 +168,31 @@ class DatabaseManager:
             return dict(user)
         return None
     
-    def verify_user_password(self, username, password):
+    def verify_user_password(self, login_identifier, password):
         """
-        验证用户密码
-        :param username: 用户名
+        验证用户密码（支持用户名、邮箱或手机号登录）
+        :param login_identifier: 登录标识符（可以是用户名、邮箱或手机号）
         :param password: 明文密码
         :return: 用户信息字典或None
         """
-        user = self.get_user_by_username(username)
+        # 根据输入的标识符类型查询用户
+        user = None
+        if '@' in login_identifier:
+            # 包含@符号，认为是邮箱
+            user = self.get_user_by_email(login_identifier)
+        elif login_identifier.isdigit() and len(login_identifier) >= 10:
+            # 纯数字且长度至少为10位，认为是手机号
+            user = self.get_user_by_phone(login_identifier)
+        else:
+            # 其他情况认为是用户名
+            user = self.get_user_by_username(login_identifier)
+        
+        # 验证密码
         if user and user['password_hash'] == self.hash_password(password):
             return user
         return None
     
-    def get_token_balance(self, user_id):
-        """
-        获取用户Token余额
-        :param user_id: 用户ID
-        :return: Token余额
-        """
-        user = self.get_user_by_id(user_id)
-        if user:
-            return user['token_balance']
-        return None
     
-    def update_token_balance(self, user_id, amount):
-        """
-        更新用户Token余额
-        :param user_id: 用户ID
-        :param amount: 变更数量（正数增加，负数减少）
-        :return: 更新后的余额或None
-        """
-        try:
-            conn = self.get_connection()
-            cursor = conn.cursor()
-            
-            # 更新余额
-            cursor.execute('''
-                UPDATE users 
-                SET token_balance = token_balance + ?, updated_at = ?
-                WHERE id = ?
-            ''', (amount, datetime.now(), user_id))
-            
-            # 获取更新后的余额
-            cursor.execute('SELECT token_balance FROM users WHERE id = ?', (user_id,))
-            result = cursor.fetchone()
-            
-            conn.commit()
-            conn.close()
-            
-            if result:
-                return result[0]
-            return None
-        except Exception as e:
-            print(f"更新Token余额时发生错误: {e}")
-            return None
 
 # 全局数据库管理器实例
-db_manager = DatabaseManager('/home/osadmin/network-ops/web-server/database/network_ops.db')
+db_manager = DatabaseManager('/home/ubuntu/all-in-one/web-server/database/network_ops.db')

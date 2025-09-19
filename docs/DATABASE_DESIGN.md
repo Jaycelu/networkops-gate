@@ -13,7 +13,6 @@
 | email | VARCHAR(100) | NOT NULL UNIQUE | 邮箱地址 |
 | phone | VARCHAR(20) | NOT NULL UNIQUE | 手机号码 |
 | password_hash | VARCHAR(255) | NOT NULL | 密码哈希值 |
-| token_balance | INTEGER | DEFAULT 1000 | Token余额（新用户默认1000） |
 | created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | 账户创建时间 |
 | updated_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | 最后更新时间 |
 
@@ -31,7 +30,6 @@ CREATE TABLE users (
     email VARCHAR(100) NOT NULL UNIQUE,
     phone VARCHAR(20) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    token_balance INTEGER DEFAULT 1000,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -84,24 +82,21 @@ def get_user_by_phone(phone):
     :return: 用户信息字典或None
     """
     pass
-```
 
-### 4.3 Token管理
-```python
-def get_token_balance(user_id):
+def get_user_by_username(username):
     """
-    获取用户Token余额
-    :param user_id: 用户ID
-    :return: Token余额
+    根据用户名查询用户信息
+    :param username: 用户名
+    :return: 用户信息字典或None
     """
     pass
 
-def update_token_balance(user_id, amount):
+def verify_user_password(username, password):
     """
-    更新用户Token余额
-    :param user_id: 用户ID
-    :param amount: 变更数量（正数增加，负数减少）
-    :return: 更新后的余额
+    验证用户密码
+    :param username: 用户名
+    :param password: 明文密码
+    :return: 用户信息字典或None
     """
     pass
 ```

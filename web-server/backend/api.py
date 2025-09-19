@@ -82,20 +82,20 @@ def register():
 @app.route('/api/login', methods=['POST'])
 def login():
     """
-    用户登录接口
+    用户登录接口（支持用户名、邮箱或手机号登录）
     """
     try:
         # 获取请求数据
         data = request.get_json()
-        username = data.get('username')
+        login_identifier = data.get('username')  # 登录标识符（可以是用户名、邮箱或手机号）
         password = data.get('password')
         
         # 验证必填字段
-        if not all([username, password]):
-            return jsonify({'success': False, 'message': '用户名和密码都是必填的'}), 400
+        if not all([login_identifier, password]):
+            return jsonify({'success': False, 'message': '账号和密码都是必填的'}), 400
         
         # 验证用户密码
-        user = db_manager.verify_user_password(username, password)
+        user = db_manager.verify_user_password(login_identifier, password)
         if user:
             return jsonify({
                 'success': True, 
@@ -109,7 +109,7 @@ def login():
                 }
             }), 200
         else:
-            return jsonify({'success': False, 'message': '用户名或密码错误'}), 401
+            return jsonify({'success': False, 'message': '账号或密码错误'}), 401
     
     except Exception as e:
         print(f"登录时发生错误: {e}")
@@ -141,4 +141,5 @@ def get_user(user_id):
         return jsonify({'success': False, 'message': '服务器内部错误'}), 500
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=9528, debug=True)
+    # 生产环境不启用debug模式
+    app.run(host='127.0.0.1', port=9528, debug=False)
