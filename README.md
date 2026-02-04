@@ -78,27 +78,49 @@
 ```
 /home/ubuntu/all-in-one/
 ├── README.md                          # 项目说明文档
+├── package.json                       # Node.js依赖配置
+├── package-lock.json                  # Node.js依赖锁定文件
 ├── docs/                              # 项目文档目录
 │   ├── ARCHITECTURE.md               # 系统架构设计文档
+│   ├── BACKEND_INTEGRATION_GUIDE.md  # 后端集成指南
 │   ├── DATABASE_DESIGN.md            # 数据库设计文档
 │   ├── DESKTOP_DEVELOPMENT_PLAN.md   # 桌面端开发计划
+│   ├── IFLOW.md                      # iFlow CLI上下文说明
 │   ├── PRD.md                        # 产品需求文档
 │   ├── PROJECT_STRUCTURE.md          # 项目结构说明
+│   ├── README.md                     # 文档说明
+│   ├── SSL_CERTIFICATE_UPDATE_GUIDE.md # SSL证书更新指南
+│   ├── SSL_Installation_SOP.md       # SSL安装SOP
 │   ├── TIMELINE_MILESTONES.md        # 时间线和里程碑
 │   └── WEB_DEVELOPMENT_PLAN.md       # Web端开发计划
-├── web-server/                        # Web官网目录
-│   ├── index.html                    # 官网首页
-│   ├── backend/api.py                # Flask API服务
+├── web/                               # Web官网目录
+│   ├── index.html                    # 官网首页（含功能模块轮播）
+│   ├── 公众号.jpg                     # 微信公众号二维码
+│   ├── 公安图标.png                   # 公安备案图标
+│   ├── backend/                      # 后端服务
+│   │   ├── api.py                    # Flask API服务
+│   │   ├── flask.log                 # Flask日志文件
+│   │   ├── network-api.service       # 网络API服务配置
+│   │   └── wsgi.py                   # WSGI入口
 │   ├── database/                     # 数据库相关
 │   │   ├── db_manager.py             # 数据库访问接口
+│   │   ├── login_example.py          # 登录示例
 │   │   ├── network_ops.db            # SQLite数据库文件
 │   │   └── schema.sql                # 数据库结构定义
-│   └── downloads/                    # 应用下载文件
-├── website.html                       # 官网页面（原始文件）
-├── 原型图.html                         # 产品原型图
-├── web-server.conf                    # Web服务器配置文件
-└── assets/                           # 静态资源目录
-    └── 公众号.jpg                      # 微信公众号二维码
+│   ├── downloads/                    # 应用下载文件目录
+│   └── js/                           # JavaScript文件
+│       └── performance-monitor.js    # 性能监控脚本
+├── config/                            # 配置文件目录
+│   └── web-server.conf               # Web服务器配置
+├── scripts/                           # 测试脚本目录
+│   ├── test-live-website.py          # 实时网站测试脚本
+│   ├── test-website.js               # 网站测试脚本
+│   └── validate-website.py           # 网站验证脚本
+├── assets/                            # 静态资源目录
+│   └── 公众号.jpg                     # 微信公众号二维码
+└── .iflow/                            # iFlow CLI技能目录
+    └── skills/
+        └── ui-ux-pro-max/             # UI/UX设计技能
 ```
 
 ## 🚀 快速开始
