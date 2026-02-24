@@ -1413,22 +1413,36 @@
         function downloadApp(platform) {
             showLoading();
             
-            // 模拟下载过程
-            setTimeout(() => {
+            // 定义下载URL
+            const downloadUrls = {
+                'windows': '/downloads/windows/network-ai-ops-setup-v1.0.0.exe',
+                'macos': '/downloads/macos/network-ai-ops-setup-v1.0.0.dmg'
+            };
+            
+            const downloadUrl = downloadUrls[platform];
+            
+            if (!downloadUrl) {
                 hideLoading();
-                showModal('下载开始', `
-                    <p>正在为您准备 ${platform} 版本的安装包...</p>
-                    <p class="mt-4">下载将在几秒钟后开始，请稍候。</p>
-                    <div class="mt-6 text-center">
-                        <button onclick="closeModal()" class="btn-primary">
-                            知道了
-                        </button>
-                    </div>
-                `);
-                
-                // 实际项目中这里会触发真实的下载
+                showMessage('暂不支持该平台的下载', 'error');
+                return;
+            }
+            
+            // 创建隐藏的下载链接
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = downloadUrl.split('/').pop();
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            
+            // 触发下载
+            link.click();
+            
+            // 清理
+            setTimeout(() => {
+                document.body.removeChild(link);
+                hideLoading();
                 showMessage(`${platform} 版本下载已开始`, 'success');
-            }, 1500);
+            }, 500);
         }
 
         // 联系表单提交
