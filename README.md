@@ -45,7 +45,9 @@ networkops-gate/
     └── 公安图标.png
 ```
 
-## 3. 本地预览
+## 3. 启动与部署
+
+### 3.1 本地启动（开发预览）
 
 在 `web/` 目录运行：
 
@@ -58,6 +60,44 @@ python3 -m http.server 8080
 - `http://127.0.0.1:8080/index.html`
 - `http://127.0.0.1:8080/pages/tools.html`
 - `http://127.0.0.1:8080/pages/downloads.html`
+
+### 3.2 服务器启动（Nginx 托管前端）
+
+目标：确保官网由本项目 `web/` 目录作为站点根目录提供服务。
+
+1. 将仓库部署到服务器，例如：
+
+```text
+/var/www/networkops-gate/
+```
+
+2. Nginx `server` 配置示例（关键是 `root` 指向 `web`）：
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    root /var/www/networkops-gate/web;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+3. 检查并重载：
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+4. 验证线上页面是否来自当前前端目录：
+- 打开 `https://your-domain.com/index.html`
+- 检查是否能访问 `https://your-domain.com/pages/tools.html`
+- 检查下载链接是否返回对应安装包文件
 
 ## 4. 新增/更新工具的标准流程
 
@@ -164,3 +204,40 @@ web/downloads/netops-ai-platform/linux/v2.0.0/netops-ai-platform-v2.0.0-amd64.ta
 - 备案链接固定使用：`https://beian.miit.gov.cn`
 - 若页面更新后看不到变化，浏览器强制刷新（`Cmd+Shift+R`）。
 
+## 7. Git 推送常见问题
+
+### 7.1 报错：`No git remote configured for push`
+
+含义：当前所在仓库没有可用于 push 的远端配置，或你在错误目录执行了 `git push`。
+
+先检查当前目录与远端：
+
+```bash
+pwd
+git rev-parse --show-toplevel
+git remote -v
+```
+
+如果没有远端，执行：
+
+```bash
+git remote add origin https://github.com/Jaycelu/networkops-gate.git
+```
+
+首次推送并建立上游分支：
+
+```bash
+git push -u origin main
+```
+
+后续常规推送：
+
+```bash
+git push origin main
+```
+
+如果你使用 GUI 的 Commit/Push 按钮报这个错，通常也是因为 GUI 打开的项目目录不是这个仓库根目录，请切换到：
+
+```text
+/Users/jayce/Desktop/Jayce/networkops-gate
+```
