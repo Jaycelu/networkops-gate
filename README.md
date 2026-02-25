@@ -71,7 +71,7 @@ python3 -m http.server 8080
 /var/www/networkops-gate/
 ```
 
-2. Nginx `server` 配置示例（关键是 `root` 指向 `web`）：
+2. Nginx `server` 配置示例（关键是 `root` 指向 `web`，并启用压缩和缓存）：
 
 ```nginx
 server {
@@ -80,6 +80,34 @@ server {
 
     root /var/www/networkops-gate/web;
     index index.html;
+
+    # 启用 gzip 压缩，降低传输体积
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 1024;
+    gzip_types
+        text/plain
+        text/css
+        text/javascript
+        application/javascript
+        application/json
+        application/xml
+        image/svg+xml;
+
+    # HTML 不做长期缓存，确保内容更新可见
+    location ~* \.html$ {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        expires -1;
+    }
+
+    # 静态资源强缓存（文件名不变时会命中浏览器缓存）
+    location ~* \.(?:css|js|json|png|jpg|jpeg|gif|svg|ico|webp)$ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        expires 365d;
+        access_log off;
+    }
 
     location / {
         try_files $uri $uri/ /index.html;
@@ -98,6 +126,25 @@ sudo systemctl reload nginx
 - 打开 `https://your-domain.com/index.html`
 - 检查是否能访问 `https://your-domain.com/pages/tools.html`
 - 检查下载链接是否返回对应安装包文件
+- 在浏览器开发者工具中确认：
+  - `index.html` 返回 `Cache-Control: no-cache, no-store, must-revalidate`
+  - `site.css` / `app.js` 返回 `Cache-Control: public, max-age=31536000, immutable`
+
+### 3.3 本次性能优化后，你在 Nginx 必须修改的项
+
+如果你已有线上 `server` 块，至少补充这 4 项：
+
+1. 增加 gzip 配置（`gzip on`、`gzip_types`、`gzip_comp_level`）。
+2. 增加 `location ~* \.html$`，设置 `Cache-Control: no-cache, no-store, must-revalidate`。
+3. 增加 `location ~* \.(?:css|js|json|png|jpg|jpeg|gif|svg|ico|webp)$`，设置 `Cache-Control: public, max-age=31536000, immutable`。
+4. 保留 `location / { try_files $uri $uri/ /index.html; }`。
+
+改完后执行：
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
 
 ## 4. 新增/更新工具的标准流程
 
@@ -202,7 +249,7 @@ web/downloads/netops-ai-platform/linux/v2.0.0/netops-ai-platform-v2.0.0-amd64.ta
 - 站点无后端依赖，不需要启动 API 服务。
 - 变更下载包时，优先新增版本目录，不覆盖历史版本。
 - 备案链接固定使用：`https://beian.miit.gov.cn`
-- 若页面更新后看不到变化，浏览器强制刷新（`Cmd+Shift+R`）。
+- 页面静态资源启用了版本号（当前：`20260225`）。当你更新 `web/css/site.css`、`web/js/app.js` 或 `web/data/tools.json` 时，请同步更新四个 HTML 文件里的 `ASSET_VERSION` 和资源 URL 上的 `?v=...` 参数。
 
 ## 7. Git 推送常见问题
 

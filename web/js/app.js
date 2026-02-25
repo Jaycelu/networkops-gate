@@ -1,11 +1,62 @@
 (function () {
   const base = window.SITE_BASE || ".";
-  const dataUrl = `${base}/data/tools.json`;
+  const version = window.ASSET_VERSION || "20260225";
+  const dataUrl = `${base}/data/tools.json?v=${encodeURIComponent(version)}`;
+  const cacheKey = `networkops-tools-data:${version}`;
+  const cacheTtlMs = 10 * 60 * 1000;
+
+  function readCachedData() {
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.ts || !parsed.data) return null;
+      if (Date.now() - parsed.ts > cacheTtlMs) return null;
+      return parsed.data;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCachedData(data) {
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }));
+    } catch {
+      // Ignore storage failures (private mode/quota).
+    }
+  }
+
+  async function fetchFreshData() {
+    const res = await fetch(dataUrl, { cache: "force-cache" });
+    if (!res.ok) throw new Error(`Failed to load data: ${res.status}`);
+    const data = await res.json();
+    writeCachedData(data);
+    return data;
+  }
 
   async function fetchData() {
-    const res = await fetch(dataUrl);
-    if (!res.ok) throw new Error(`Failed to load data: ${res.status}`);
-    return res.json();
+    const cached = readCachedData();
+    if (cached) {
+      fetchFreshData().catch(() => {});
+      return cached;
+    }
+    return fetchFreshData();
+  }
+
+  function prefetchLikelyPages() {
+    const links = [
+      `${base}/index.html`,
+      `${base}/pages/tools.html`,
+      `${base}/pages/downloads.html`,
+      dataUrl
+    ];
+
+    links.forEach((href) => {
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.href = href;
+      document.head.appendChild(link);
+    });
   }
 
   function toolCard(basePath, tool) {
@@ -252,6 +303,8 @@
       n.href = `mailto:${data.site.email}`;
     });
   }
+
+  prefetchLikelyPages();
 
   fetchData()
     .then((data) => {
