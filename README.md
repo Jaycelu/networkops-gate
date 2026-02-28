@@ -71,7 +71,7 @@ python3 -m http.server 8080
 /var/www/networkops-gate/
 ```
 
-2. Nginx `server` 配置示例（关键是 `root` 指向 `web`，并启用压缩和缓存）：
+2. Nginx `server` 配置示例（关键是 `root` 指向 `web`，并启用压缩、缓存、安全头、访问日志）：
 
 ```nginx
 server {
@@ -80,6 +80,22 @@ server {
 
     root /var/www/networkops-gate/web;
     index index.html;
+    charset utf-8;
+
+    # 访问与下载统计日志（供首页组件读取真实数据）
+    log_format networkops_metrics '$time_local "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"';
+    map $uri $is_visit_path {
+        default 0;
+        ~^/$ 1;
+        ~^/index\.html$ 1;
+        ~^/pages/(tools|tool|downloads)\.html$ 1;
+    }
+    map $uri $is_download_path {
+        default 0;
+        ~^/downloads/[a-z0-9-]+/ 1;
+    }
+    access_log /var/log/nginx/networkops_access.log networkops_metrics if=$is_visit_path;
+    access_log /var/log/nginx/networkops_download.log networkops_metrics if=$is_download_path;
 
     # 启用 gzip 压缩，降低传输体积
     gzip on;
@@ -96,6 +112,13 @@ server {
         application/xml
         image/svg+xml;
 
+    # 安全响应头
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" always;
+
     # HTML 不做长期缓存，确保内容更新可见
     location ~* \.html$ {
         add_header Cache-Control "no-cache, no-store, must-revalidate";
@@ -106,7 +129,6 @@ server {
     location ~* \.(?:css|js|json|png|jpg|jpeg|gif|svg|ico|webp)$ {
         add_header Cache-Control "public, max-age=31536000, immutable";
         expires 365d;
-        access_log off;
     }
 
     location / {
@@ -129,15 +151,18 @@ sudo systemctl reload nginx
 - 在浏览器开发者工具中确认：
   - `index.html` 返回 `Cache-Control: no-cache, no-store, must-revalidate`
   - `site.css` / `app.js` 返回 `Cache-Control: public, max-age=31536000, immutable`
+  - 页面响应头包含 `Content-Security-Policy`、`X-Content-Type-Options`、`Referrer-Policy`
 
-### 3.3 本次性能优化后，你在 Nginx 必须修改的项
+### 3.3 本次安全与性能优化后，你在 Nginx 必须修改的项
 
-如果你已有线上 `server` 块，至少补充这 4 项：
+如果你已有线上 `server` 块，至少补充这 6 项：
 
 1. 增加 gzip 配置（`gzip on`、`gzip_types`、`gzip_comp_level`）。
 2. 增加 `location ~* \.html$`，设置 `Cache-Control: no-cache, no-store, must-revalidate`。
 3. 增加 `location ~* \.(?:css|js|json|png|jpg|jpeg|gif|svg|ico|webp)$`，设置 `Cache-Control: public, max-age=31536000, immutable`。
-4. 保留 `location / { try_files $uri $uri/ /index.html; }`。
+4. 增加安全响应头（`CSP`、`X-Content-Type-Options`、`X-Frame-Options`、`Referrer-Policy`）。
+5. 配置 `networkops_access.log` 与 `networkops_download.log` 两类日志输出。
+6. 保留 `location / { try_files $uri $uri/ /index.html; }`。
 
 改完后执行：
 
@@ -145,6 +170,35 @@ sudo systemctl reload nginx
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+### 3.4 将 Nginx 真实日志接入首页右侧统计组件
+
+首页“每日访问与下载记录”组件支持两种数据源：
+- 默认：浏览器本地统计（`localStorage`）
+- 推荐：服务器真实统计（`web/data/metrics.json`，由 Nginx 日志生成）
+
+当 `web/data/metrics.json` 存在时，组件会优先展示真实数据。
+
+1. 使用本仓库脚本从 Nginx 日志生成 `metrics.json`：
+
+```bash
+cd /var/www/networkops-gate
+python3 scripts/generate_metrics_from_nginx.py \
+  --log /var/log/nginx/networkops_access.log /var/log/nginx/networkops_download.log \
+  --output web/data/metrics.json
+```
+
+2. 配置定时任务（每 5 分钟刷新一次）：
+
+```bash
+*/5 * * * * cd /var/www/networkops-gate && /usr/bin/python3 scripts/generate_metrics_from_nginx.py --log /var/log/nginx/networkops_access.log /var/log/nginx/networkops_download.log --output web/data/metrics.json >/tmp/networkops_metrics.log 2>&1
+```
+
+3. 验证真实数据已接入：
+- 访问几次 `index.html` 和 `pages/*.html`
+- 点击一两个安装包下载链接
+- 执行一次脚本后，检查 `web/data/metrics.json` 中 `visitsByDate` 与 `downloadsByTool` 是否变化
+- 刷新首页，右侧统计组件应显示对应真实计数
 
 ## 4. 新增/更新工具的标准流程
 
@@ -249,7 +303,9 @@ web/downloads/netops-ai-platform/linux/v2.0.0/netops-ai-platform-v2.0.0-amd64.ta
 - 站点无后端依赖，不需要启动 API 服务。
 - 变更下载包时，优先新增版本目录，不覆盖历史版本。
 - 备案链接固定使用：`https://beian.miit.gov.cn`
-- 页面静态资源启用了版本号（当前：`20260225`）。当你更新 `web/css/site.css`、`web/js/app.js` 或 `web/data/tools.json` 时，请同步更新四个 HTML 文件里的 `ASSET_VERSION` 和资源 URL 上的 `?v=...` 参数。
+- 页面静态资源启用了版本号（当前：`20260228`）。当你更新 `web/css/site.css`、`web/js/app.js` 或 `web/data/tools.json` 时，请同步更新四个 HTML 文件里的资源 URL 上的 `?v=...` 参数。
+- 若你修改了 `web/data/tools.json`，请同步更新 `web/js/app.js` 中的 `EXPECTED_TOOLS_HASH`（可执行：`shasum -a 256 web/data/tools.json`）。
+- 下载链接白名单已启用：仅允许本站 ` /downloads/<tool-slug>/... ` 路径，非法/越界链接会在页面显示“已拦截”。
 
 ## 7. Git 推送常见问题
 
