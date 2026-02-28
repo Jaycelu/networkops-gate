@@ -11,6 +11,7 @@
   const dataUrl = `${base}/data/tools.json?v=${encodeURIComponent(version)}`;
   const metricsUrl = `${base}/data/metrics.json?v=${encodeURIComponent(version)}`;
   let externalMetrics = null;
+  let integrityWarning = "";
 
   function detectBase() {
     if (window.SITE_BASE) return window.SITE_BASE;
@@ -176,12 +177,14 @@
     if (!res.ok) throw new Error(`Failed to load data: ${res.status}`);
 
     const rawText = await res.text();
+    const data = JSON.parse(rawText);
     const hash = await sha256Hex(rawText);
     if (hash !== EXPECTED_TOOLS_HASH) {
-      throw new Error("data/tools.json 完整性校验失败，可能存在文件篡改");
+      integrityWarning = "tools.json 完整性校验未通过，已启用降级加载。请更新 EXPECTED_TOOLS_HASH。";
+      return data;
     }
 
-    const data = JSON.parse(rawText);
+    integrityWarning = "";
     writeCachedData(data, hash);
     return data;
   }
@@ -604,18 +607,38 @@
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let rafId = 0;
-    let x = window.innerWidth / 2;
-    let y = window.innerHeight / 2;
+    let targetX = window.innerWidth / 2;
+    let targetY = window.innerHeight / 2;
+    let smoothX = targetX;
+    let smoothY = targetY;
+    let lastX = targetX;
+    let lastY = targetY;
 
     function paint() {
-      document.documentElement.style.setProperty("--mx", `${x}px`);
-      document.documentElement.style.setProperty("--my", `${y}px`);
-      rafId = 0;
+      smoothX += (targetX - smoothX) * 0.2;
+      smoothY += (targetY - smoothY) * 0.2;
+
+      const dx = smoothX - lastX;
+      const dy = smoothY - lastY;
+      const angle = Math.atan2(dy, dx) * 57.2958;
+
+      document.documentElement.style.setProperty("--mx", `${smoothX.toFixed(2)}px`);
+      document.documentElement.style.setProperty("--my", `${smoothY.toFixed(2)}px`);
+      document.documentElement.style.setProperty("--ma", `${angle.toFixed(2)}deg`);
+
+      lastX = smoothX;
+      lastY = smoothY;
+
+      if (Math.abs(targetX - smoothX) > 0.15 || Math.abs(targetY - smoothY) > 0.15) {
+        rafId = window.requestAnimationFrame(paint);
+      } else {
+        rafId = 0;
+      }
     }
 
     window.addEventListener("mousemove", (event) => {
-      x = event.clientX;
-      y = event.clientY;
+      targetX = event.clientX;
+      targetY = event.clientY;
       document.body.classList.add("pointer-ready");
       if (!rafId) rafId = window.requestAnimationFrame(paint);
     });
@@ -632,6 +655,11 @@
       renderToolDetail(data);
       renderDownloads(data);
       initDownloadTracker(data);
+      if (integrityWarning) {
+        setError(integrityWarning);
+      } else {
+        setError("");
+      }
     })
     .catch((error) => {
       console.error(error);
