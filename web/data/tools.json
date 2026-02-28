@@ -61,25 +61,33 @@
       "repository": "https://github.com/Jaycelu/network-AIOps",
       "downloads": [
         {
-          "version": "v1.0.0",
-          "date": "2026-02-24",
+          "version": "v1.0.2",
+          "date": "2026-02-26",
           "platform": "Windows",
           "arch": "x64",
           "size": "--",
-          "filename": "network-ai-ops-setup-v1.0.0.exe",
-          "path": "./downloads/network-ai-ops/windows/v1.0.0/network-ai-ops-setup-v1.0.0.exe"
+          "filename": "network-ai-ops-setup-v1.0.2.exe",
+          "path": "./downloads/network-ai-ops/windows/v1.0.2/network-ai-ops-setup-v1.0.2.exe"
         },
         {
-          "version": "v1.0.0",
-          "date": "2026-02-24",
+          "version": "v1.0.2",
+          "date": "2026-02-26",
           "platform": "macOS",
           "arch": "Intel / Apple Silicon",
           "size": "--",
-          "filename": "network-ai-ops-setup-v1.0.0.dmg",
-          "path": "./downloads/network-ai-ops/macos/v1.0.0/network-ai-ops-setup-v1.0.0.dmg"
+          "filename": "network-ai-ops-setup-v1.0.2.dmg",
+          "path": "./downloads/network-ai-ops/macos/v1.0.2/network-ai-ops-setup-v1.0.2.dmg"
         }
       ],
       "changelog": [
+        {
+          "version": "v1.0.2",
+          "items": [
+            "性能优化与体验改进",
+            "支持 AI 运维工作台与设备管理",
+            "支持批量部署、知识库检索和配置管理"
+          ]
+        },
         {
           "version": "v1.0.0",
           "items": [
