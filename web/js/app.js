@@ -1,7 +1,7 @@
 (function () {
   const FALLBACK_VERSION = "20260228";
-  const EXPECTED_TOOLS_HASH = "072123497a838de74f44cdd2be2798e39e28fe14ebc00d6734b0a6d1c771235b";
-  const CACHE_TTL_MS = 10 * 60 * 1000;
+  const EXPECTED_TOOLS_HASH = "9d42d33ecef185d7067d863284c8d996cb925f4ce5590eb4a234b51bf53a35c9";
+  const CACHE_TTL_MS = 5 * 60 * 1000;
   const DATA_CACHE_KEY = `networkops-tools-data:${FALLBACK_VERSION}`;
   const METRICS_KEY = "networkops-site-metrics:v1";
   const MOODS = ["高效", "专注", "平稳", "疲惫", "兴奋"];
@@ -199,14 +199,7 @@
   }
 
   async function fetchExternalMetrics() {
-    try {
-      const res = await fetch(metricsUrl, { cache: "no-cache" });
-      if (!res.ok) return;
-      const payload = await res.json();
-      externalMetrics = normalizeMetrics(payload);
-    } catch {
-      // Keep local metrics as fallback.
-    }
+    // External metrics fetching disabled
   }
 
   function prefetchLikelyPages() {
@@ -252,51 +245,7 @@
   }
 
   function renderMetricsWidget(data) {
-    const visitToday = document.getElementById("visit-today");
-    const downloadToday = document.getElementById("download-today");
-    const trend = document.getElementById("visit-trend");
-    const top = document.getElementById("download-top");
-    if (!visitToday || !downloadToday || !trend || !top) return;
-
-    const metrics = externalMetrics ? { ...normalizeMetrics(externalMetrics), moodByDate: readMetrics().moodByDate } : readMetrics();
-    const day = localDateKey(0);
-
-    visitToday.textContent = String(Number(metrics.visitsByDate[day] || 0));
-    downloadToday.textContent = String(sumMapValues(metrics.downloadsByDate[day] || {}));
-
-    const days = Array.from({ length: 7 }, (_, idx) => localDateKey(idx - 6));
-    const values = days.map((d) => Number(metrics.visitsByDate[d] || 0));
-    const maxVal = Math.max(1, ...values);
-
-    trend.innerHTML = days
-      .map((d, idx) => {
-        const value = values[idx];
-        const level = value <= 0 ? "l0" : `l${Math.max(1, Math.min(8, Math.ceil((value / maxVal) * 8)))}`;
-        return `
-          <div class="trend-item">
-            <div class="trend-bar ${level}"></div>
-            <div class="trend-label">${escapeHtml(d.slice(5))}</div>
-          </div>
-        `;
-      })
-      .join("");
-
-    const nameBySlug = Object.fromEntries((data.tools || []).map((t) => [String(t.slug || ""), String(t.name || t.slug || "未知工具")]));
-    const topItems = Object.entries(metrics.downloadsByTool || {})
-      .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0))
-      .slice(0, 5);
-
-    if (!topItems.length) {
-      top.innerHTML = '<p class="download-empty">暂无下载记录，点击下载后会自动累计。</p>';
-      return;
-    }
-
-    top.innerHTML = topItems
-      .map(([slug, count]) => {
-        const toolName = nameBySlug[slug] || slug;
-        return `<div class="download-row"><span>${escapeHtml(toolName)}</span><strong>${Number(count || 0)}</strong></div>`;
-      })
-      .join("");
+    // Metrics widget removed
   }
 
   function renderMoodWidget() {

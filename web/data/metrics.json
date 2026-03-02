@@ -1,6 +1,6 @@
 {
-  "generatedAt": "",
-  "source": "",
+  "generatedAt": "2026-03-02T08:35:02",
+  "source": "/var/log/nginx/networkops_access.log, /var/log/nginx/networkops_download.log",
   "visitsByDate": {},
   "downloadsByDate": {},
   "downloadsByTool": {}
